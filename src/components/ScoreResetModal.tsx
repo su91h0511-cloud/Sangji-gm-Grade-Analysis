@@ -9,6 +9,7 @@ interface ScoreResetModalProps {
   currentExam: ExamInfo;
   onResetExamScores: (grade: Grade, examId: string) => void;
   onResetGradeAllExamsScores: (grade: Grade) => void;
+  onResetAllGradesScores?: () => void;
   onResetAllSystemData: () => void;
 }
 
@@ -19,9 +20,10 @@ export const ScoreResetModal: React.FC<ScoreResetModalProps> = ({
   currentExam,
   onResetExamScores,
   onResetGradeAllExamsScores,
+  onResetAllGradesScores,
   onResetAllSystemData,
 }) => {
-  const [resetOption, setResetOption] = useState<'currentExam' | 'gradeAll' | 'systemInitial'>('currentExam');
+  const [resetOption, setResetOption] = useState<'currentExam' | 'gradeAll' | 'allGrades' | 'systemInitial'>('currentExam');
   const [confirmText, setConfirmText] = useState('');
 
   if (!isOpen) return null;
@@ -38,6 +40,13 @@ export const ScoreResetModal: React.FC<ScoreResetModalProps> = ({
     } else if (resetOption === 'gradeAll') {
       if (confirm(`정말 [${grade}학년 전체 4개 시험] 의 모든 학생 점수를 초기화하시겠습니까?`)) {
         onResetGradeAllExamsScores(grade);
+        onClose();
+      }
+    } else if (resetOption === 'allGrades') {
+      if (confirm(`정말 전 학년(1·2·3학년)의 모든 시험 점수를 비우시겠습니까? (학생 명단은 유지됩니다)`)) {
+        if (onResetAllGradesScores) {
+          onResetAllGradesScores();
+        }
         onClose();
       }
     } else if (resetOption === 'systemInitial') {
@@ -119,10 +128,34 @@ export const ScoreResetModal: React.FC<ScoreResetModalProps> = ({
               />
               <div className="space-y-0.5">
                 <div className="text-xs font-bold text-slate-900">
-                  {grade}학년 전체 시험 점수 초기화 (1·2차 지필평가 전체)
+                  {grade}학년 전체 시험 점수 초기화 (1·2학기 4개 시험 전체)
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  {grade}학년 학생 명단은 유지되며, 1·2학기 모든 지필평가 점수를 비웁니다.
+                  {grade}학년 학생 명단은 유지되며, 해당 학년의 4개 시험 점수만 깨끗하게 비웁니다.
+                </div>
+              </div>
+            </label>
+
+            <label
+              className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
+                resetOption === 'allGrades'
+                  ? 'border-rose-500 bg-rose-50/30'
+                  : 'border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              <input
+                type="radio"
+                name="resetOption"
+                checked={resetOption === 'allGrades'}
+                onChange={() => setResetOption('allGrades')}
+                className="mt-0.5 text-rose-600"
+              />
+              <div className="space-y-0.5">
+                <div className="text-xs font-bold text-slate-900">
+                  전체 학년(1~3학년) 모든 시험 점수 비우기 (학생 명단 유지)
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  1~3학년 학생 명단과 과목 설정은 그대로 보존하고, 등록된 모든 시험 점수만 빈 상태로 초기화합니다.
                 </div>
               </div>
             </label>

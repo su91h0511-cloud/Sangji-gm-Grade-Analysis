@@ -83,7 +83,26 @@ export async function initializeCloudDataIfEmpty(
 }
 
 /**
+ * Sanitizes object to remove undefined values for Firestore compatibility
+ */
+function sanitizeData(val: any): any {
+  if (val === undefined) return null;
+  if (val === null || typeof val !== 'object') return val;
+  if (Array.isArray(val)) {
+    return val.map(sanitizeData);
+  }
+  const clean: Record<string, any> = {};
+  for (const [k, v] of Object.entries(val)) {
+    if (v !== undefined) {
+      clean[k] = sanitizeData(v);
+    }
+  }
+  return clean;
+}
+
+/**
  * Saves the current state to Firestore so all other teachers see it immediately.
+ * Overwrites the document without merging to allow key deletions and resets.
  */
 export async function saveGradeSystemToCloud(
   students: Student[],
@@ -91,16 +110,13 @@ export async function saveGradeSystemToCloud(
   scores: StudentExamScores
 ): Promise<void> {
   try {
-    await setDoc(
-      SYSTEM_DOC_REF,
-      {
-        students,
-        subjectConfigs,
-        scores,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+    const payload = sanitizeData({
+      students,
+      subjectConfigs,
+      scores,
+      updatedAt: new Date().toISOString(),
+    });
+    await setDoc(SYSTEM_DOC_REF, payload);
   } catch (error) {
     console.error('Failed to save data to Firebase Firestore:', error);
     throw error;

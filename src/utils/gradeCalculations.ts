@@ -75,8 +75,9 @@ export function calculateExamResults(
     };
   });
 
-  // 2. Compute Grade-wide rank (higher average = rank 1)
-  const sortedByAvg = [...studentDataList].sort((a, b) => {
+  // 2. Compute Grade-wide rank (only for students with valid scores)
+  const scoredStudents = studentDataList.filter((item) => item.validCount > 0);
+  const sortedByAvg = [...scoredStudents].sort((a, b) => {
     if (b.average !== a.average) return b.average - a.average;
     return b.total - a.total;
   });
@@ -91,7 +92,7 @@ export function calculateExamResults(
     }
   });
 
-  // 3. Compute Class-wide rank
+  // 3. Compute Class-wide rank (only for students with valid scores)
   const classGroups = new Map<number, typeof studentDataList>();
   studentDataList.forEach((item) => {
     const list = classGroups.get(item.student.classNum) || [];
@@ -104,7 +105,8 @@ export function calculateExamResults(
 
   classGroups.forEach((classStudents, classNum) => {
     classTotalMap.set(classNum, classStudents.length);
-    const sortedClass = [...classStudents].sort((a, b) => {
+    const scoredClassStudents = classStudents.filter((item) => item.validCount > 0);
+    const sortedClass = [...scoredClassStudents].sort((a, b) => {
       if (b.average !== a.average) return b.average - a.average;
       return b.total - a.total;
     });
@@ -158,11 +160,14 @@ export function calculateExamResults(
 
   // 5. Build final calculated results
   return studentDataList.map((item) => {
-    const gradeRank = gradeRankMap.get(item.student.id) || totalInGrade;
-    const classRank = classRankMap.get(item.student.id) || 1;
+    const hasScores = item.validCount > 0;
+    const gradeRank = hasScores ? (gradeRankMap.get(item.student.id) || 0) : 0;
+    const classRank = hasScores ? (classRankMap.get(item.student.id) || 0) : 0;
     const totalInClass = classTotalMap.get(item.student.classNum) || 1;
     const percentile =
-      totalInGrade > 0 ? Math.round((gradeRank / totalInGrade) * 1000) / 10 : 0;
+      hasScores && totalInGrade > 0
+        ? Math.round((gradeRank / totalInGrade) * 1000) / 10
+        : 0;
 
     const subjectAchievements: StudentCalculatedResult['subjectAchievements'] = {};
     subjects.forEach((subj) => {

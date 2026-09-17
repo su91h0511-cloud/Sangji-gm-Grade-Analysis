@@ -87,6 +87,11 @@ export const StudentScoreTable: React.FC<StudentScoreTableProps> = ({
     return filtered.sort((a, b) => {
       let comparison = 0;
       if (sortField === 'rank') {
+        const aHas = a.validSubjectCount > 0 && a.gradeRank > 0;
+        const bHas = b.validSubjectCount > 0 && b.gradeRank > 0;
+        if (!aHas && !bHas) return a.student.studentNum - b.student.studentNum;
+        if (!aHas) return 1;
+        if (!bHas) return -1;
         comparison = a.gradeRank - b.gradeRank;
       } else if (sortField === 'classNum') {
         if (a.student.classNum !== b.student.classNum) {
@@ -97,11 +102,21 @@ export const StudentScoreTable: React.FC<StudentScoreTableProps> = ({
       } else if (sortField === 'name') {
         comparison = a.student.name.localeCompare(b.student.name, 'ko');
       } else if (sortField === 'average' || sortField === 'total') {
+        const aHas = a.validSubjectCount > 0;
+        const bHas = b.validSubjectCount > 0;
+        if (!aHas && !bHas) return a.student.studentNum - b.student.studentNum;
+        if (!aHas) return 1;
+        if (!bHas) return -1;
         comparison = b.average - a.average;
       } else if (currentSubjects.includes(sortField)) {
-        const scoreA = a.scores[sortField] ?? -1;
-        const scoreB = b.scores[sortField] ?? -1;
-        comparison = scoreB - scoreA;
+        const scoreA = a.scores[sortField];
+        const scoreB = b.scores[sortField];
+        const aHas = typeof scoreA === 'number';
+        const bHas = typeof scoreB === 'number';
+        if (!aHas && !bHas) return a.student.studentNum - b.student.studentNum;
+        if (!aHas) return 1;
+        if (!bHas) return -1;
+        comparison = (scoreB as number) - (scoreA as number);
       }
 
       return sortAsc ? comparison : -comparison;
@@ -110,13 +125,17 @@ export const StudentScoreTable: React.FC<StudentScoreTableProps> = ({
 
   // Quick statistics
   const gradeStats = useMemo(() => {
-    if (results.length === 0) return { avg: 0, max: 0, count: 0 };
-    const averages = results.map((r) => r.average);
+    const scoredStudents = results.filter((r) => r.validSubjectCount > 0);
+    if (scoredStudents.length === 0) {
+      return { avg: '-', max: '-', count: 0, totalStudents: results.length };
+    }
+    const averages = scoredStudents.map((r) => r.average);
     const sum = averages.reduce((a, b) => a + b, 0);
     return {
-      avg: Math.round((sum / results.length) * 10) / 10,
-      max: Math.max(...averages),
-      count: results.length,
+      avg: (Math.round((sum / scoredStudents.length) * 10) / 10).toFixed(1),
+      max: Math.max(...averages).toFixed(1),
+      count: scoredStudents.length,
+      totalStudents: results.length,
     };
   }, [results]);
 
@@ -141,7 +160,9 @@ export const StudentScoreTable: React.FC<StudentScoreTableProps> = ({
             <div className="text-xs text-slate-500 font-medium">{grade}학년 전체 응시자</div>
             <div className="text-lg font-black text-slate-900">
               {gradeStats.count}
-              <span className="text-xs font-normal text-slate-500 ml-1">명</span>
+              <span className="text-xs font-normal text-slate-500 ml-1">
+                / {results.length}명
+              </span>
             </div>
           </div>
         </div>
@@ -154,7 +175,9 @@ export const StudentScoreTable: React.FC<StudentScoreTableProps> = ({
             <div className="text-xs text-slate-500 font-medium">학년 전체 평균</div>
             <div className="text-lg font-black text-slate-900">
               {gradeStats.avg}
-              <span className="text-xs font-normal text-slate-500 ml-1">점</span>
+              {gradeStats.avg !== '-' && (
+                <span className="text-xs font-normal text-slate-500 ml-1">점</span>
+              )}
             </div>
           </div>
         </div>
@@ -167,7 +190,9 @@ export const StudentScoreTable: React.FC<StudentScoreTableProps> = ({
             <div className="text-xs text-slate-500 font-medium">학년 최고 평균</div>
             <div className="text-lg font-black text-slate-900">
               {gradeStats.max}
-              <span className="text-xs font-normal text-slate-500 ml-1">점</span>
+              {gradeStats.max !== '-' && (
+                <span className="text-xs font-normal text-slate-500 ml-1">점</span>
+              )}
             </div>
           </div>
         </div>
@@ -494,41 +519,51 @@ export const StudentScoreTable: React.FC<StudentScoreTableProps> = ({
 
                           {/* Total */}
                           <td className="py-2.5 px-3 text-center font-extrabold text-slate-800">
-                            {result.total}
+                            {result.validSubjectCount > 0 ? result.total : '-'}
                           </td>
 
                           {/* Average */}
                           <td className="py-2.5 px-3 text-center font-black text-blue-700 bg-blue-50/20">
-                            {result.average.toFixed(1)}
+                            {result.validSubjectCount > 0 ? result.average.toFixed(1) : '-'}
                           </td>
 
                           {/* Overall Grade Rank */}
                           <td className="py-2.5 px-3 text-center bg-amber-50/40">
-                            <div className="inline-flex items-center justify-center gap-1 font-black text-amber-900">
-                              {result.gradeRank === 1 && (
-                                <span className="text-amber-500">🥇</span>
-                              )}
-                              {result.gradeRank === 2 && (
-                                <span className="text-slate-400">🥈</span>
-                              )}
-                              {result.gradeRank === 3 && (
-                                <span className="text-amber-700">🥉</span>
-                              )}
-                              <span className="text-sm">{result.gradeRank}</span>
-                              <span className="text-[10px] text-slate-500 font-normal">
-                                /{result.totalInGrade}
-                              </span>
-                            </div>
+                            {result.validSubjectCount > 0 && result.gradeRank > 0 ? (
+                              <div className="inline-flex items-center justify-center gap-1 font-black text-amber-900">
+                                {result.gradeRank === 1 && (
+                                  <span className="text-amber-500">🥇</span>
+                                )}
+                                {result.gradeRank === 2 && (
+                                  <span className="text-slate-400">🥈</span>
+                                )}
+                                {result.gradeRank === 3 && (
+                                  <span className="text-amber-700">🥉</span>
+                                )}
+                                <span className="text-sm">{result.gradeRank}</span>
+                                <span className="text-[10px] text-slate-500 font-normal">
+                                  /{result.totalInGrade}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 text-xs font-normal">-</span>
+                            )}
                           </td>
 
                           {/* Class Rank */}
                           <td className="py-2.5 px-3 text-center bg-indigo-50/30">
-                            <span className="font-extrabold text-indigo-900">
-                              {result.classRank}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-normal">
-                              /{result.totalInClass}
-                            </span>
+                            {result.validSubjectCount > 0 && result.classRank > 0 ? (
+                              <>
+                                <span className="font-extrabold text-indigo-900">
+                                  {result.classRank}
+                                </span>
+                                <span className="text-[10px] text-slate-500 font-normal ml-0.5">
+                                  /{result.totalInClass}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-slate-400 text-xs font-normal">-</span>
+                            )}
                           </td>
 
                           {/* Actions */}
@@ -587,7 +622,7 @@ export const StudentScoreTable: React.FC<StudentScoreTableProps> = ({
                         -
                       </td>
                       <td className="py-2.5 px-3 text-center text-blue-800 font-black">
-                        {gradeStats.avg.toFixed(1)}
+                        {gradeStats.avg}
                       </td>
                       <td colSpan={3} className="py-2.5 px-3 text-center text-xs text-slate-400 font-medium">
                         (기준: {currentExam.name})

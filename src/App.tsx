@@ -347,6 +347,10 @@ export default function App() {
       gradeStudents.forEach((st) => {
         delete updated[`${st.id}_${examId}`];
       });
+      // Immediately write updated clean scores to Firestore
+      saveGradeSystemToCloud(students, subjectConfigs, updated).catch((err) =>
+        console.warn('Cloud sync on current exam score reset error:', err)
+      );
       return updated;
     });
   };
@@ -360,8 +364,19 @@ export default function App() {
           delete updated[`${st.id}_${ex.id}`];
         });
       });
+      // Immediately write updated clean scores to Firestore
+      saveGradeSystemToCloud(students, subjectConfigs, updated).catch((err) =>
+        console.warn('Cloud sync on grade score reset error:', err)
+      );
       return updated;
     });
+  };
+
+  const handleResetAllGradesScores = () => {
+    setScores({});
+    saveGradeSystemToCloud(students, subjectConfigs, {}).catch((err) =>
+      console.warn('Cloud sync on all grades score reset error:', err)
+    );
   };
 
   const handleResetAllSystemData = () => {
@@ -369,6 +384,9 @@ export default function App() {
     setStudents(INITIAL_STUDENTS);
     setSubjectConfigs(DEFAULT_SUBJECT_CONFIGS);
     setScores(INITIAL_SCORES);
+    saveGradeSystemToCloud(INITIAL_STUDENTS, DEFAULT_SUBJECT_CONFIGS, INITIAL_SCORES).catch((err) =>
+      console.warn('Cloud sync on system restore error:', err)
+    );
   };
 
   // JSON Backup Export & Import
@@ -555,6 +573,7 @@ export default function App() {
         currentExam={currentExam}
         onResetExamScores={handleResetCurrentExamScores}
         onResetGradeAllExamsScores={handleResetGradeAllExamsScores}
+        onResetAllGradesScores={handleResetAllGradesScores}
         onResetAllSystemData={handleResetAllSystemData}
       />
 

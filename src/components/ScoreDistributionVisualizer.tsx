@@ -110,7 +110,7 @@ export const ScoreDistributionVisualizer: React.FC<ScoreDistributionVisualizerPr
       const gradeValues = results
         .map((r) =>
           activeSubjectName === '전과목 종합 평균'
-            ? r.average
+            ? (r.validSubjectCount > 0 ? r.average : null)
             : r.scores[activeSubjectName]
         )
         .filter((v): v is number => typeof v === 'number' && !isNaN(v));
@@ -131,7 +131,7 @@ export const ScoreDistributionVisualizer: React.FC<ScoreDistributionVisualizerPr
         const classValues = classStudents
           .map((r) =>
             activeSubjectName === '전과목 종합 평균'
-              ? r.average
+              ? (r.validSubjectCount > 0 ? r.average : null)
               : r.scores[activeSubjectName]
           )
           .filter((v): v is number => typeof v === 'number' && !isNaN(v));
@@ -158,7 +158,7 @@ export const ScoreDistributionVisualizer: React.FC<ScoreDistributionVisualizerPr
 
       // Overall average first
       const avgValues = filteredResults
-        .map((r) => r.average)
+        .map((r) => (r.validSubjectCount > 0 ? r.average : null))
         .filter((v): v is number => typeof v === 'number' && !isNaN(v));
 
       statsList.push(
@@ -205,7 +205,7 @@ export const ScoreDistributionVisualizer: React.FC<ScoreDistributionVisualizerPr
           values: results
             .map((r) =>
               activeSubjectName === '전과목 종합 평균'
-                ? r.average
+                ? (r.validSubjectCount > 0 ? r.average : null)
                 : r.scores[activeSubjectName]
             )
             .filter((v): v is number => typeof v === 'number' && !isNaN(v)),
@@ -218,7 +218,7 @@ export const ScoreDistributionVisualizer: React.FC<ScoreDistributionVisualizerPr
             .filter((r) => r.student.classNum === cNum)
             .map((r) =>
               activeSubjectName === '전과목 종합 평균'
-                ? r.average
+                ? (r.validSubjectCount > 0 ? r.average : null)
                 : r.scores[activeSubjectName]
             )
             .filter((v): v is number => typeof v === 'number' && !isNaN(v)),
@@ -239,7 +239,7 @@ export const ScoreDistributionVisualizer: React.FC<ScoreDistributionVisualizerPr
           name: '종합 평균',
           color: '#0f172a',
           values: filteredResults
-            .map((r) => r.average)
+            .map((r) => (r.validSubjectCount > 0 ? r.average : null))
             .filter((v): v is number => typeof v === 'number' && !isNaN(v)),
         },
         ...currentSubjects.map((subj, idx) => ({
@@ -266,10 +266,15 @@ export const ScoreDistributionVisualizer: React.FC<ScoreDistributionVisualizerPr
     histUnit,
   ]);
 
+  const hasAnyScoredStudent = useMemo(() => {
+    return results.some((r) => r.validSubjectCount > 0);
+  }, [results]);
+
   // Quick stats summary
   const summaryNotice = useMemo(() => {
     if (boxPlotData.length === 0) return null;
     const base = boxPlotData[0];
+    if (base.count === 0) return null;
     return {
       label: base.label,
       mean: base.mean,
@@ -352,7 +357,21 @@ export const ScoreDistributionVisualizer: React.FC<ScoreDistributionVisualizerPr
       {/* Expanded Content Area */}
       {isExpanded && (
         <div className="p-4 sm:p-5 space-y-4">
-          {/* Filter & Configuration Control Bar */}
+          {!hasAnyScoredStudent ? (
+            <div className="p-10 text-center bg-slate-50/70 rounded-xl border border-slate-200">
+              <div className="w-12 h-12 mx-auto rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-3 border border-blue-100">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800">
+                현재 시험에 등록된 성적 데이터가 없습니다
+              </h4>
+              <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
+                성적 초기화 후 점수가 아직 등록되지 않은 상태입니다. 상단 <span className="font-bold text-blue-600">[자료 업로드]</span>를 통해 엑셀 성적을 올리거나 아래 성적표에서 점수를 입력하시면 실시간 도수분포 히스토그램과 박스 플롯이 계산되어 표시됩니다.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Filter & Configuration Control Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
             {/* Dimension Selection */}
             <div className="flex flex-wrap items-center gap-2">
@@ -719,6 +738,8 @@ export const ScoreDistributionVisualizer: React.FC<ScoreDistributionVisualizerPr
                 </table>
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
       )}

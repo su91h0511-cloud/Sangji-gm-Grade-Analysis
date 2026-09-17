@@ -140,7 +140,9 @@ export const ReportCardSheet: React.FC<ReportCardSheetProps> = ({
     });
 
     let overallRemark = '';
-    if (result.percentile <= 15) {
+    if (result.validSubjectCount === 0) {
+      overallRemark = '현재 등록된 지필평가 점수가 없습니다. 점수가 등록되면 자동 학업 피드백이 제공됩니다.';
+    } else if (result.percentile <= 15) {
       overallRemark =
         '전체 학년 상위권의 탁월한 학업 성취도를 유지하고 있습니다. 현재의 학습 습관을 지속하여 심화 학습에 도전하는 것을 권장합니다.';
     } else if (result.percentile <= 40) {
@@ -201,13 +203,19 @@ export const ReportCardSheet: React.FC<ReportCardSheetProps> = ({
           <div>
             <div className="text-xs text-slate-500 font-medium">전체 석차 (전교)</div>
             <div className="text-xl font-black text-slate-900">
-              {result.gradeRank}
-              <span className="text-xs text-slate-500 font-normal ml-1">
-                / {result.totalInGrade}명
-              </span>
+              {result.validSubjectCount > 0 && result.gradeRank > 0 ? (
+                <>
+                  {result.gradeRank}
+                  <span className="text-xs text-slate-500 font-normal ml-1">
+                    / {result.totalInGrade}명
+                  </span>
+                </>
+              ) : (
+                <span className="text-slate-400 font-normal">-</span>
+              )}
             </div>
             <div className="text-[11px] text-amber-700 font-bold">
-              상위 {result.percentile}%
+              {result.validSubjectCount > 0 && result.gradeRank > 0 ? `상위 ${result.percentile}%` : '-'}
             </div>
           </div>
         </div>
@@ -219,13 +227,19 @@ export const ReportCardSheet: React.FC<ReportCardSheetProps> = ({
           <div>
             <div className="text-xs text-slate-500 font-medium">반별 등수 (학급)</div>
             <div className="text-xl font-black text-slate-900">
-              {result.classRank}
-              <span className="text-xs text-slate-500 font-normal ml-1">
-                / {result.totalInClass}명
-              </span>
+              {result.validSubjectCount > 0 && result.classRank > 0 ? (
+                <>
+                  {result.classRank}
+                  <span className="text-xs text-slate-500 font-normal ml-1">
+                    / {result.totalInClass}명
+                  </span>
+                </>
+              ) : (
+                <span className="text-slate-400 font-normal">-</span>
+              )}
             </div>
             <div className="text-[11px] text-indigo-700 font-bold">
-              {student.classNum}반 내 등수
+              {student.classNum}반 내
             </div>
           </div>
         </div>
@@ -237,11 +251,19 @@ export const ReportCardSheet: React.FC<ReportCardSheetProps> = ({
           <div>
             <div className="text-xs text-slate-500 font-medium">총점 및 평균</div>
             <div className="text-xl font-black text-blue-700">
-              {result.average.toFixed(1)}
-              <span className="text-xs font-normal text-slate-500 ml-1">점</span>
+              {result.validSubjectCount > 0 ? (
+                <>
+                  {result.average.toFixed(1)}
+                  <span className="text-xs font-normal text-slate-500 ml-1">점</span>
+                </>
+              ) : (
+                <span className="text-slate-400 font-normal">-</span>
+              )}
             </div>
             <div className="text-[11px] text-slate-500">
-              총점 {result.total}점 ({result.validSubjectCount}과목)
+              {result.validSubjectCount > 0
+                ? `총점 ${result.total}점 (${result.validSubjectCount}과목)`
+                : '미응시 또는 점수 미등록'}
             </div>
           </div>
         </div>
