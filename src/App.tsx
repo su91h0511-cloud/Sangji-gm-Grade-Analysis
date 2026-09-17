@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Grade,
   ExamInfo,
@@ -17,6 +17,11 @@ import {
   calculateExamResults,
   calculateSubjectStats,
 } from './utils/gradeCalculations';
+import {
+  subscribeToCloudGradeData,
+  saveGradeSystemToCloud,
+  initializeCloudDataIfEmpty,
+} from './lib/firebase';
 import { Header } from './components/Header';
 import { NavigationTabs, TabType } from './components/NavigationTabs';
 import { StudentScoreTable } from './components/StudentScoreTable';
@@ -95,6 +100,11 @@ export default function App() {
     return true;
   });
 
+  // Cloud connection status
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(true);
+  const isIncomingCloudSyncRef = useRef<boolean>(false);
+  const initialCloudLoadDoneRef = useRef<boolean>(false);
+
   // Current active selections
   const [currentGrade, setCurrentGrade] = useState<Grade>(3);
   const [currentExamId, setCurrentExamId] = useState<ExamId>('1-mid');
@@ -156,10 +166,54 @@ export default function App() {
     return calculateSubjectStats(currentSubjects, currentExamResults);
   }, [currentSubjects, currentExamResults]);
 
-  // Auto-save effect
+  // Real-time Firestore Cloud Subscription
   useEffect(() => {
+    // Attempt initializing empty cloud collection first
+    initializeCloudDataIfEmpty({
+      students: INITIAL_STUDENTS,
+      subjectConfigs: DEFAULT_SUBJECT_CONFIGS,
+      scores: INITIAL_SCORES,
+    }).catch((err) => {
+      console.warn('Initial cloud seed skipped or already present:', err);
+    });
+
+    const unsubscribe = subscribeToCloudGradeData(
+      (cloudData) => {
+        isIncomingCloudSyncRef.current = true;
+        setStudents(cloudData.students);
+        setSubjectConfigs(cloudData.subjectConfigs);
+        setScores(cloudData.scores);
+        if (cloudData.updatedAt) {
+          setLastSavedTime(new Date(cloudData.updatedAt));
+        }
+        setIsCloudConnected(true);
+        initialCloudLoadDoneRef.current = true;
+
+        // Reset incoming flag on next tick
+        setTimeout(() => {
+          isIncomingCloudSyncRef.current = false;
+        }, 100);
+      },
+      (err) => {
+        console.warn('Firestore real-time subscription error, using local storage:', err);
+        setIsCloudConnected(false);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Auto-save effect (saves to localStorage AND syncs to Firebase Cloud)
+  useEffect(() => {
+    // If update originated from cloud subscription, don't ping-pong write back
+    if (isIncomingCloudSyncRef.current) {
+      return;
+    }
+
     setIsSaving(true);
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       try {
         const stateToSave: SavedState = {
           students,
@@ -168,13 +222,17 @@ export default function App() {
           enableLeaveWarning,
         };
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
+
+        // Save to Firebase Cloud so other users see updates instantly
+        await saveGradeSystemToCloud(students, subjectConfigs, scores);
         setLastSavedTime(new Date());
+        setIsCloudConnected(true);
       } catch (e) {
-        console.error('Failed to auto-save to localStorage', e);
+        console.error('Failed to sync data to cloud/localStorage', e);
       } finally {
         setIsSaving(false);
       }
-    }, 500);
+    }, 700);
 
     return () => clearTimeout(timer);
   }, [students, subjectConfigs, scores, enableLeaveWarning]);
@@ -390,6 +448,7 @@ export default function App() {
           studentsInGrade={studentsInGrade}
           lastSavedTime={lastSavedTime}
           isSaving={isSaving}
+          isCloudConnected={isCloudConnected}
           enableLeaveWarning={enableLeaveWarning}
           onToggleLeaveWarning={() => setEnableLeaveWarning(!enableLeaveWarning)}
           onExportBackup={handleExportBackup}

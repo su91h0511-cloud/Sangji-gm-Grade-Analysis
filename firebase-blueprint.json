@@ -1,0 +1,24 @@
+{
+  "entities": {
+    "GradeData": {
+      "collection": "grade_data",
+      "fields": {
+        "grade": { "type": "number", "required": true },
+        "students": { "type": "array", "required": true },
+        "subjectConfigs": { "type": "object", "required": true },
+        "scores": { "type": "object", "required": true },
+        "updatedAt": { "type": "string", "required": false }
+      }
+    },
+    "SharedSystem": {
+      "collection": "sangji_system",
+      "fields": {
+        "students": { "type": "array", "required": true },
+        "subjectConfigs": { "type": "object", "required": true },
+        "scores": { "type": "object", "required": true },
+        "updatedAt": { "type": "string", "required": false },
+        "updatedBy": { "type": "string", "required": false }
+      }
+    }
+  }
+}

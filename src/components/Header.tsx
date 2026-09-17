@@ -13,6 +13,7 @@ import {
   FileUp,
   CheckCircle2,
   Layers,
+  Cloud,
 } from 'lucide-react';
 import { Grade, ExamInfo, EXAMS, Student } from '../types';
 
@@ -31,6 +32,7 @@ interface HeaderProps {
   studentsInGrade: Student[];
   lastSavedTime: Date | null;
   isSaving: boolean;
+  isCloudConnected?: boolean;
   enableLeaveWarning: boolean;
   onToggleLeaveWarning: () => void;
   onExportBackup: () => void;
@@ -52,6 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
   studentsInGrade,
   lastSavedTime,
   isSaving,
+  isCloudConnected = true,
   enableLeaveWarning,
   onToggleLeaveWarning,
   onExportBackup,
@@ -91,26 +94,34 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Auto-save & Last Saved Time Indicator */}
+            {/* Auto-save & Cloud Sync Indicator */}
             <div
-              className="hidden md:flex items-center gap-2 px-3 py-2 bg-emerald-50/80 text-emerald-800 border border-emerald-200/80 rounded-xl text-xs font-semibold shadow-2xs select-none transition-all"
-              title="학생 정보, 과목 설정 및 성적 데이터가 브라우저에 안전하게 실시간 자동 저장됩니다."
+              className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold shadow-2xs select-none transition-all ${
+                isCloudConnected
+                  ? 'bg-blue-50/90 text-blue-900 border border-blue-200'
+                  : 'bg-emerald-50/80 text-emerald-800 border border-emerald-200/80'
+              }`}
+              title={
+                isCloudConnected
+                  ? '클라우드 실시간 동기화 활성화: 다른 컴퓨터나 다른 사용자가 링크로 접속해도 모든 자료가 실시간으로 자동 공유·저장됩니다.'
+                  : '브라우저 자동 저장 활성화'
+              }
             >
               {isSaving ? (
                 <>
-                  <RefreshCw className="w-3.5 h-3.5 text-emerald-600 animate-spin" />
-                  <span className="text-emerald-700 font-bold">저장 중...</span>
+                  <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                  <span className="text-blue-700 font-bold">클라우드 동기화 중...</span>
                 </>
               ) : (
                 <>
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
                   </span>
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <Cloud className="w-3.5 h-3.5 text-blue-600" />
                   <span>
-                    자동 저장됨{' '}
-                    <span className="font-mono text-[11px] text-emerald-700 font-normal">
+                    클라우드 실시간 동기화됨{' '}
+                    <span className="font-mono text-[11px] text-blue-700 font-normal">
                       ({formatSavedTime(lastSavedTime)})
                     </span>
                   </span>
